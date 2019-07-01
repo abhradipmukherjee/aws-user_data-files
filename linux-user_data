@@ -1,0 +1,46 @@
+#! /bin/bash
+echo "script started" > /var/cloudinitcustomlog
+sleep 120
+echo "waiting complete" >> /var/cloudinitcustomlog
+# Format /dev/xvdh if it does not contain a partition yet
+# if [ "$(file -b -s /dev/xvdh)" == "data" ]; then
+echo "about to start formating" >> /var/cloudinitcustomlog
+mkfs -t ext4 /dev/xvdh
+# fi
+echo "After formating before creating mountpoint" >> /var/cloudinitcustomlog
+mkdir -p /data
+echo "Before mounting" >> /var/cloudinitcustomlog
+mount /dev/xvdh /data
+echo "after mounting" >> /var/cloudinitcustomlog
+
+# Persist the volume in /etc/fstab so it gets mounted again
+echo '/dev/xvdh /data ext4 defaults,nofail 0 2' >> /etc/fstab
+echo "after adding entry into fstab" >> /var/cloudinitcustomlog
+
+echo " starting apache installation" >> /var/cloudinitcustomlog
+echo "first updating packages" >> /var/cloudinitcustomlog
+apt update
+echo "apt update complete, now installing apache2" >> /var/cloudinitcustomlog
+apt install -y apache2
+echo "Now restarting apache2" >> /var/cloudinitcustomlog
+service apache2 restart
+echo "apache2 restarted" >> /var/cloudinitcustomlog
+
+echo "Starting to move default apache directory to mountpoint" >> /var/cloudinitcustomlog
+rsync -av /var/www/html /data/
+echo "moving apache directory content to mountpoint is done" >> /var/cloudinitcustomlog
+echo "Installing tree for printing output" >> /var/cloudinitcustomlog
+apt install -y tree
+tree /data >> /var/cloudinitcustomlog
+echo "Now downloading and setting new /etc/apache2/sites-enabled/000-default.conf to point to /data" >> /var/cloudinitcustomlog
+wget https://raw.githubusercontent.com/abhradipmukherjee/indexfiles/master/000-default.conf -O /etc/apache2/sites-enabled/000-default.conf
+grep -R "DocumentRoot" /etc/apache2/sites-enabled >> /var/cloudinitcustomlog
+echo "Apache is reconfigured. Now putting in the index file in /data" >> /var/cloudinitcustomlog
+wget https://raw.githubusercontent.com/abhradipmukherjee/indexfiles/master/linindex.html -O /data/html/index.html
+echo "file downloaded. content of directory"  >> /var/cloudinitcustomlog
+ls -l /data/html >> /var/cloudinitcustomlog
+echo "content on the file" >> /var/cloudinitcustomlog
+cat /data/html/index.html >> /var/cloudinitcustomlog
+echo "Now will restart the apache service" >> /var/cloudinitcustomlog
+service apache2 restart
+echo "apache2 restarted after changing document root and index file" >> /var/cloudinitcustomlog
